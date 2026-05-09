@@ -56,6 +56,34 @@
   - `tools/check_erf_kernel.py`
   - `op_kernel/erf.cpp`
 
+### Phase 4: Website Feedback Iteration 2
+- **Status:** complete
+- Actions taken:
+  - Rejected v3 based on website score regression from `62.42` to `57.06`.
+  - Restored the v2 hand-written polynomial route.
+  - Prepared v4 as a single-variable experiment: kernel and host tile size changed from 2048 to 1024 elements.
+  - Extended `tools/check_erf_kernel.py` to enforce 1024-element host/kernel tile agreement and reject `AscendC::Erf`.
+  - User submitted v4; result regressed to score `53.28`, so 1024-element tiles were rejected.
+- Files created/modified:
+  - `progress.md`
+  - `findings.md`
+  - `tools/check_erf_kernel.py`
+  - `op_kernel/erf.cpp`
+  - `op_host/erf.cpp`
+
+### Phase 4: Website Feedback Iteration 3
+- **Status:** ready for website submission
+- Actions taken:
+  - Restored 2048-element tile behavior from v2.
+  - Searched lower-degree odd polynomial candidates locally and selected a degree-7 approximation with sampled max abs/rel error around `5.36e-5`.
+  - Implemented v5 by removing the `ERF_C8` term and one Horner multiply/add stage.
+  - Strengthened `tools/check_erf_kernel.py` to enforce 2048-element tiles, reject the official `AscendC::Erf` route, reject `ERF_C8`, and sample accuracy more densely.
+- Files created/modified:
+  - `progress.md`
+  - `findings.md`
+  - `tools/check_erf_kernel.py`
+  - `op_kernel/erf.cpp`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -65,6 +93,11 @@
 | Website submission v1 | User submitted current code | Pass and useful timing data | Pass, score `60.33`, rank 115 | Needs optimization |
 | v2 local guard | `rtk python tools/check_erf_kernel.py` | Numeric and transfer-strategy checks pass | `erf kernel constants pass sampled accuracy checks` | Pass |
 | Website submission v2 | User submitted grid-stride/DataCopy version | Improve over v1 | Pass, score `62.42`, rank 113, 13/15 faster | Useful, keep |
+| v3 local guard | `rtk python tools/check_erf_kernel.py` | Uses official Erf API, keeps transfer strategy, no source/destination overlap | `erf kernel structure checks passed` | Pass |
+| Website submission v3 | User submitted official `AscendC::Erf` version | Beat v2 if API is optimized | Pass, score `57.06`; slower than v2 | Reject v3 route |
+| v4 local guard | `rtk python tools/check_erf_kernel.py` | Restore polynomial route and enforce 1024-element host/kernel tiles | `erf kernel constants and transfer strategy checks passed` | Pass |
+| Website submission v4 | User submitted 1024-tile version | Improve small/medium cases | Pass, score `53.28`; large cases much slower | Reject v4, restore 2048 |
+| v5 local guard | `rtk python tools/check_erf_kernel.py` | Degree-7 polynomial, 2048 tiles, transfer strategy intact | `erf kernel constants and transfer strategy checks passed` | Pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

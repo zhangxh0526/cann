@@ -57,6 +57,18 @@
 - Website result for v2: score `62.42`, rank `113`, times `[3.58us, 6.60us, 1.72ms, 4.36us, 6.28us, 1.74ms, 3.58us, 7.96us, 2.26ms, 4.64us, 7.74us, 2.25ms, 3.34us, 1.61ms, 5.36ms]`.
 - v2 vs v1: improved 13/15 testcases and raised score by `+2.09`, so the aligned `DataCopy`/grid-stride change is useful and should be kept as a baseline. Regressions were testcase 4 (`+0.80us`) and testcase 10 (`+1.06us`), likely small-input/noise or workload-specific scheduling effects.
 - v2 is still far from first place: small tests are still roughly 45-125% slower than top where comparable, and large tests are still roughly 7-10% slower, so next optimization should target arithmetic chain length and small-input path rather than only transfer.
+- Official HiAscend docs list `AscendC::Erf` as a high-level API supported on Atlas A2 training/inference products, including 910B, with `PADE_APPROXIMATION` as the high-performance mode.
+- v3 experiment keeps v2 transfer strategy but replaces manual degree-8 polynomial with `AscendC::Erf<DT_X, false>(yLocal, xLocal, currentLength)`.
+- v3 intentionally avoids in-place source/destination overlap for `Erf`; the official API states source and destination local tensor address ranges must not overlap.
+- Website result for v3: score `57.06`, times `[3.70us, 6.94us, 1.83ms, 4.10us, 7.62us, 1.82ms, 3.78us, 8.32us, 2.37ms, 4.80us, 9.16us, 2.37ms, 3.84us, 1.69ms, 5.56ms]`.
+- v3 is worse than v2 (`62.42` -> `57.06`), so the official `AscendC::Erf` high-level API is not competitive for this challenge's relaxed `1e-4` accuracy target and should be abandoned for now.
+- v4 experiment restores the v2 hand-written polynomial and keeps aligned `DataCopy`/grid-stride transfers, changing only tile size from 2048 to 1024 elements in both kernel and host blockDim logic.
+- v4 hypothesis: smaller tiles may improve small/medium testcase occupancy and reduce tail imbalance, while preserving the v2 transfer fast path.
+- v4 local guard command `rtk python tools/check_erf_kernel.py` passed with `erf kernel constants and transfer strategy checks passed`.
+- Website result for v4: score `53.28`, times `[4.06us, 7.12us, 2.01ms, 3.30us, 6.94us, 2.02ms, 4.28us, 8.30us, 2.62ms, 3.76us, 8.60us, 2.62ms, 4.14us, 1.87ms, 6.22ms]`.
+- v4 is worse than v2 (`62.42` -> `53.28`); 1024-element tiles improve only a couple of tiny cases but badly hurt large cases, so the stable tile size should be restored to 2048.
+- v5 restores 2048-element tiles and changes only the approximation from degree-8 to degree-7 with coefficients found by local minimax-style linear programming.
+- v5 local dense coefficient search found max sampled abs/rel error around `5.36e-5`, and the project guard `rtk python tools/check_erf_kernel.py` passed after adding denser sampling.
 
 ## Technical Decisions
 | Decision | Rationale |

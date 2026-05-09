@@ -7,6 +7,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 KERNEL = ROOT / "op_kernel" / "erf.cpp"
+HOST = ROOT / "op_host" / "erf.cpp"
 
 EXPECTED_NAMES = [
     "ERF_CLAMP",
@@ -18,7 +19,6 @@ EXPECTED_NAMES = [
     "ERF_C5",
     "ERF_C6",
     "ERF_C7",
-    "ERF_C8",
 ]
 
 
@@ -40,8 +40,8 @@ def f32(value):
 def erf_approx(x, c):
     clamped = f32(min(max(f32(x), f32(-c["ERF_CLAMP"])), f32(c["ERF_CLAMP"])))
     x2 = f32(clamped * clamped)
-    poly = f32(c["ERF_C8"])
-    for idx in range(7, -1, -1):
+    poly = f32(c["ERF_C7"])
+    for idx in range(6, -1, -1):
         poly = f32(f32(poly * x2) + c[f"ERF_C{idx}"])
     return f32(clamped * poly)
 
@@ -50,7 +50,9 @@ def check_accuracy():
     constants = load_constants()
     samples = []
     samples.extend([i / 100.0 for i in range(-1000, 1001)])
+    samples.extend([i / 1000.0 for i in range(-10000, 10001)])
     samples.extend([i / 1000.0 for i in range(-100, 101)])
+    samples.extend([i / 10000.0 for i in range(-1000, 1001)])
     samples.extend([-3.92, -3.0, -2.0, -1.0, -0.1, 0.0, 0.1, 1.0, 2.0, 3.0, 3.92])
 
     max_abs = 0.0
@@ -71,15 +73,24 @@ def check_accuracy():
 
 
 def check_transfer_strategy():
-    text = KERNEL.read_text(encoding="utf-8")
-    if not re.search(r"\bDataCopy\s*\(", text):
+    kernel = KERNEL.read_text(encoding="utf-8")
+    host = HOST.read_text(encoding="utf-8")
+    if "TILE_LENGTH = 2048" not in kernel:
+        raise AssertionError("v5 should restore 2048-element kernel tiles")
+    if "tileLength = 2048" not in host:
+        raise AssertionError("host blockDim tiling must match 2048-element kernel tiles")
+    if not re.search(r"\bDataCopy\s*\(", kernel):
         raise AssertionError("missing aligned DataCopy fast path")
-    if "tileIdx += this->blockNum" not in text:
+    if "tileIdx += this->blockNum" not in kernel:
         raise AssertionError("missing grid-stride tile distribution")
-    if "coreStart" in text or "coreLength" in text:
+    if "coreStart" in kernel or "coreLength" in kernel:
         raise AssertionError("kernel still uses per-core contiguous slices, which can create non-aligned copies")
-    if text.count("DataCopyPad") < 2:
+    if kernel.count("DataCopyPad") < 2:
         raise AssertionError("tail path should still use DataCopyPad for non-aligned testcase coverage")
+    if "AscendC::Erf<DT_X, false>" in kernel:
+        raise AssertionError("v5 should reject the slower official Erf API route")
+    if "ERF_C8" in kernel:
+        raise AssertionError("v5 should use the shorter degree-7 polynomial")
 
 
 if __name__ == "__main__":
@@ -89,4 +100,4 @@ if __name__ == "__main__":
     except Exception as exc:
         print(exc, file=sys.stderr)
         sys.exit(1)
-    print("erf kernel constants pass sampled accuracy checks")
+    print("erf kernel constants and transfer strategy checks passed")

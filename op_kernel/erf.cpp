@@ -7,15 +7,14 @@ static constexpr uint32_t BUFFER_NUM = 2;
 static constexpr uint32_t TILE_LENGTH = 2048;
 
 static constexpr float ERF_CLAMP = 2.75f;
-static constexpr float ERF_C0 = 1.12837500608f;
-static constexpr float ERF_C1 = -0.376028255931f;
-static constexpr float ERF_C2 = 0.112454472053f;
-static constexpr float ERF_C3 = -0.0262818582733f;
-static constexpr float ERF_C4 = 0.00476769821608f;
-static constexpr float ERF_C5 = -0.000646623345734f;
-static constexpr float ERF_C6 = 0.0000606508755252f;
-static constexpr float ERF_C7 = -0.00000344208037461f;
-static constexpr float ERF_C8 = 0.0000000877506744302f;
+static constexpr float ERF_C0 = 1.12832108649f;
+static constexpr float ERF_C1 = -0.37525755282f;
+static constexpr float ERF_C2 = 0.110547898148f;
+static constexpr float ERF_C3 = -0.0244334541826f;
+static constexpr float ERF_C4 = 0.00387220668914f;
+static constexpr float ERF_C5 = -0.000408272001113f;
+static constexpr float ERF_C6 = 0.000025214094655f;
+static constexpr float ERF_C7 = -0.000000681881927478f;
 
 template <class DT_X>
 class KernelErf {
@@ -80,9 +79,7 @@ private:
         AscendC::Mins(yLocal, yLocal, static_cast<DT_X>(ERF_CLAMP), currentLength);
         AscendC::Mul(x2Local, yLocal, yLocal, currentLength);
 
-        AscendC::Muls(polyLocal, x2Local, static_cast<DT_X>(ERF_C8), currentLength);
-        AscendC::Adds(polyLocal, polyLocal, static_cast<DT_X>(ERF_C7), currentLength);
-        AscendC::Mul(polyLocal, polyLocal, x2Local, currentLength);
+        AscendC::Muls(polyLocal, x2Local, static_cast<DT_X>(ERF_C7), currentLength);
         AscendC::Adds(polyLocal, polyLocal, static_cast<DT_X>(ERF_C6), currentLength);
         AscendC::Mul(polyLocal, polyLocal, x2Local, currentLength);
         AscendC::Adds(polyLocal, polyLocal, static_cast<DT_X>(ERF_C5), currentLength);

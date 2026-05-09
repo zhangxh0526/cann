@@ -4,7 +4,7 @@
 Analyze the ERF challenge, understand its scoring and constraints, and develop the fastest correct implementation in this cloned codebase.
 
 ## Current Phase
-Phase 2
+Phase 4
 
 ## Phases
 
@@ -49,6 +49,8 @@ Phase 2
 | Keep changes narrowly focused on performance | The goal is ranking, so unrelated refactors add risk without value. |
 | Start with a conservative vectorized rational-approximation kernel | It targets correctness and a submit-ready baseline before per-testcase leaderboard tuning. |
 | Switch first implementation to an odd polynomial approximation | The page's displayed rational formula did not meet `1e-4` in local sampled checks, while the odd polynomial does and avoids division/exp. |
+| Keep 2048-element tiles after v4 | The 1024-tile experiment improved only a couple of tiny cases and regressed large cases badly. |
+| Keep the v5 degree-7 polynomial as the active baseline | CANNJudge score improved from v2 `62.42` to v5 `66.07`, with 13/15 testcase timings faster than v2. |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -61,3 +63,4 @@ Phase 2
 - Log all findings immediately so they survive context resets.
 - User will log in to the CANNJudge platform and submit builds after code is prepared.
 - User is applying for Huawei-provided resources; until then, verification happens through website submissions and user-provided per-testcase results.
+- Active baseline as of 2026-05-09 16:58 Asia/Shanghai: v5 degree-7 polynomial, 2048-element tiles, score `66.07`.

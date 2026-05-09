@@ -11,7 +11,7 @@
   - Created initial planning files to persist requirements and findings.
   - Fetched and inspected the SPA routing and problem-detail frontend modules.
   - Rendered the actual ERF problem page with Playwright and captured the challenge constraints.
-  - Rendered the ranking tab and captured current first-place score and testcase time distribution.
+  - Rendered the ranking tab and captured first-place score and testcase time distribution at 2026-05-09 15:05 Asia/Shanghai.
   - Read local host/kernel/CMake files and confirmed the kernel implementation is empty.
   - Checked local git/toolchain state: repo is at `600a985 baseline template`, CMake exists, no `ASCEND*` env vars were present.
   - Confirmed the submission workflow with the user: I prepare code, the user submits on CANNJudge, then returns detailed per-testcase timings for iteration.
@@ -72,12 +72,14 @@
   - `op_host/erf.cpp`
 
 ### Phase 4: Website Feedback Iteration 3
-- **Status:** ready for website submission
+- **Status:** complete
 - Actions taken:
   - Restored 2048-element tile behavior from v2.
   - Searched lower-degree odd polynomial candidates locally and selected a degree-7 approximation with sampled max abs/rel error around `5.36e-5`.
   - Implemented v5 by removing the `ERF_C8` term and one Horner multiply/add stage.
   - Strengthened `tools/check_erf_kernel.py` to enforce 2048-element tiles, reject the official `AscendC::Erf` route, reject `ERF_C8`, and sample accuracy more densely.
+  - User submitted v5 to CANNJudge at 2026-05-09 16:58 Asia/Shanghai; result score `66.07`, timings `[3.60us, 6.44us, 1.70ms, 3.82us, 6.20us, 1.68ms, 3.42us, 7.46us, 2.20ms, 4.34us, 7.28us, 2.20ms, 3.54us, 1.56ms, 5.31ms]`.
+  - v5 improved over v2 by `+3.65` score points and 13/15 testcase timings, so degree-7 polynomial is the active baseline for future work.
 - Files created/modified:
   - `progress.md`
   - `findings.md`
@@ -98,6 +100,7 @@
 | v4 local guard | `rtk python tools/check_erf_kernel.py` | Restore polynomial route and enforce 1024-element host/kernel tiles | `erf kernel constants and transfer strategy checks passed` | Pass |
 | Website submission v4 | User submitted 1024-tile version | Improve small/medium cases | Pass, score `53.28`; large cases much slower | Reject v4, restore 2048 |
 | v5 local guard | `rtk python tools/check_erf_kernel.py` | Degree-7 polynomial, 2048 tiles, transfer strategy intact | `erf kernel constants and transfer strategy checks passed` | Pass |
+| Website submission v5 | User submitted degree-7 polynomial version | Improve over v2 by reducing arithmetic chain | Pass, score `66.07`, 13/15 timings faster than v2 | Active baseline |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -110,8 +113,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Paused after Phase 1 discovery |
-| Where am I going? | Phase 2/3: prepare a submit-ready ERF implementation now, then iterate from website results |
+| Where am I? | Phase 4 website-feedback iteration; active baseline is v5 degree-7 polynomial with score `66.07`. |
+| Where am I going? | Continue toward first place by testing lower arithmetic cost, small-input fast paths, and length-specific tiling once more timing data or Huawei resources are available. |
 | What's the goal? | Build the fastest correct ERF solution for the judge |
 | What have I learned? | See findings.md |
-| What have I done? | Read instructions, inspected repo root, created planning files |
+| What have I done? | Implemented and evaluated v1-v5; rejected official `AscendC::Erf` and 1024-tile route; kept 2048-tile degree-7 polynomial as the best known version. |

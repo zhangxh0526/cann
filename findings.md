@@ -29,7 +29,7 @@
 - Accuracy requirement: float32 relative error < `1e-4` and absolute error < `1e-4`.
 - Compatibility requirement: support arbitrary dimensions and non-32-byte-aligned/non-32-multiple shapes.
 - Test coverage stated on the page: 1D/2D/3D/4D/high-dimensional tensors, non-aligned cases, values in `[-3, 3]`, saturated ranges `[-10, -3]` and `[3, 10]`, and near-zero range `[-0.1, 0.1]`.
-- Ranking page has 15 testcase columns. Current first place is score `87.21`, with testcase times roughly `1.86us, 4.28us, 1.60ms, 1.94us, 4.64us, 1.60ms, 5.16us, 5.98us, 2.10ms, 4.74us, 6.32us, 2.11ms, 3.32us, 1.47ms, 5.05ms`.
+- Ranking page has 15 testcase columns. First place observed at 2026-05-09 15:05 Asia/Shanghai had score `87.21`, with testcase times roughly `1.86us, 4.28us, 1.60ms, 1.94us, 4.64us, 1.60ms, 5.16us, 5.98us, 2.10ms, 4.74us, 6.32us, 2.11ms, 3.32us, 1.47ms, 5.05ms`.
 - The rendered page made API calls to public group `69c8ffcea2bcbfa3591f481e`, contest `69e7798bbaa77b2077c513ce`, and problem `69e782b3baa77b2077c515f4`.
 - Problem JSON fields: `code_template=custom_template`, `score_mode=1`, `use_baseline=false`, tag `vector`, testcase IDs `476` through `490`.
 - All problem testcase baseline fields are `null`, so the visible leaderboard does not expose official baseline timings.
@@ -50,8 +50,8 @@
 - Local sampled polynomial check simulates float32 operations and passes `1e-4` absolute/relative threshold over the tested coverage range.
 - Host tiling now sets `blockDim = min(num_cores_aiv, ceil(length / 2048))`, so tiny inputs do not launch all AIV cores.
 - First website result for odd-polynomial version: score `60.33`, rank 115, times `[3.98us, 6.76us, 1.76ms, 3.56us, 6.98us, 1.76ms, 4.80us, 8.12us, 2.30ms, 3.58us, 7.98us, 2.30ms, 4.34us, 1.62ms, 5.47ms]`.
-- Current first place after fetching leaderboard is score `87.62`; same top submission times are `[1.86us, 4.28us, 1.597ms, 1.94us, 4.64us, 1.598ms, 5.16us, 5.98us, 2.098ms, 4.74us, 6.32us, 2.105ms, 3.32us, 1.469ms, 5.051ms]`.
-- Pattern from v1: small microsecond tests 1/2/4/5 are much slower than top, large tests are around 8-12% slower, while tests 7 and 10 are already near or faster than the current top row.
+- Leaderboard first place fetched at 2026-05-09 15:05 Asia/Shanghai had score `87.62`; same top submission times were `[1.86us, 4.28us, 1.597ms, 1.94us, 4.64us, 1.598ms, 5.16us, 5.98us, 2.098ms, 4.74us, 6.32us, 2.105ms, 3.32us, 1.469ms, 5.051ms]`.
+- Pattern from v1: small microsecond tests 1/2/4/5 were much slower than the 2026-05-09 15:05 top row, large tests were around 8-12% slower, while tests 7 and 10 were already near or faster than that top row.
 - Direct testcase API access such as `/api/testcases/69e782b3baa77b2077c515f8` returns 403, so testcase shapes/lengths are not publicly exposed.
 - Optimization hypothesis for v2: v1 uses `DataCopyPad` for every tile and per-core contiguous slices can create non-32B-aligned starts/lengths; grid-stride 2048-element tiles allow full tiles to use aligned `DataCopy` and reserve `DataCopyPad` for the final tail.
 - Website result for v2: score `62.42`, rank `113`, times `[3.58us, 6.60us, 1.72ms, 4.36us, 6.28us, 1.74ms, 3.58us, 7.96us, 2.26ms, 4.64us, 7.74us, 2.25ms, 3.34us, 1.61ms, 5.36ms]`.
@@ -69,6 +69,9 @@
 - v4 is worse than v2 (`62.42` -> `53.28`); 1024-element tiles improve only a couple of tiny cases but badly hurt large cases, so the stable tile size should be restored to 2048.
 - v5 restores 2048-element tiles and changes only the approximation from degree-8 to degree-7 with coefficients found by local minimax-style linear programming.
 - v5 local dense coefficient search found max sampled abs/rel error around `5.36e-5`, and the project guard `rtk python tools/check_erf_kernel.py` passed after adding denser sampling.
+- Website result for v5 at 2026-05-09 16:58 Asia/Shanghai: score `66.07`, times `[3.60us, 6.44us, 1.70ms, 3.82us, 6.20us, 1.68ms, 3.42us, 7.46us, 2.20ms, 4.34us, 7.28us, 2.20ms, 3.54us, 1.56ms, 5.31ms]`.
+- v5 improved over v2 by `+3.65` score points (`62.42` -> `66.07`) and improved 13/15 testcase timings; regressions were testcase 1 (`3.58us` -> `3.60us`) and testcase 13 (`3.34us` -> `3.54us`).
+- The useful direction after v5 is confirmed: reduce approximation arithmetic while keeping 2048-element tile/grid-stride transfer strategy. Remaining gap to the fetched top row is still strongest on tiny microsecond cases and around 6-7% on several large millisecond cases.
 
 ## Technical Decisions
 | Decision | Rationale |

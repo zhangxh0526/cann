@@ -70,9 +70,22 @@ def check_accuracy():
         raise AssertionError(f"accuracy failed: max_abs={max_abs:.8g}, max_rel={max_rel:.8g}, worst_x={worst}")
 
 
+def check_transfer_strategy():
+    text = KERNEL.read_text(encoding="utf-8")
+    if not re.search(r"\bDataCopy\s*\(", text):
+        raise AssertionError("missing aligned DataCopy fast path")
+    if "tileIdx += this->blockNum" not in text:
+        raise AssertionError("missing grid-stride tile distribution")
+    if "coreStart" in text or "coreLength" in text:
+        raise AssertionError("kernel still uses per-core contiguous slices, which can create non-aligned copies")
+    if text.count("DataCopyPad") < 2:
+        raise AssertionError("tail path should still use DataCopyPad for non-aligned testcase coverage")
+
+
 if __name__ == "__main__":
     try:
         check_accuracy()
+        check_transfer_strategy()
     except Exception as exc:
         print(exc, file=sys.stderr)
         sys.exit(1)

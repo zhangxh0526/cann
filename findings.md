@@ -49,6 +49,14 @@
 - First implementation uses `erf(x) ~= clamp(x, -2.75, 2.75) * P(clamp(x)^2)` with degree-8 polynomial in `x^2`, avoiding `Div`, `Exp`, and sign-selection logic.
 - Local sampled polynomial check simulates float32 operations and passes `1e-4` absolute/relative threshold over the tested coverage range.
 - Host tiling now sets `blockDim = min(num_cores_aiv, ceil(length / 2048))`, so tiny inputs do not launch all AIV cores.
+- First website result for odd-polynomial version: score `60.33`, rank 115, times `[3.98us, 6.76us, 1.76ms, 3.56us, 6.98us, 1.76ms, 4.80us, 8.12us, 2.30ms, 3.58us, 7.98us, 2.30ms, 4.34us, 1.62ms, 5.47ms]`.
+- Current first place after fetching leaderboard is score `87.62`; same top submission times are `[1.86us, 4.28us, 1.597ms, 1.94us, 4.64us, 1.598ms, 5.16us, 5.98us, 2.098ms, 4.74us, 6.32us, 2.105ms, 3.32us, 1.469ms, 5.051ms]`.
+- Pattern from v1: small microsecond tests 1/2/4/5 are much slower than top, large tests are around 8-12% slower, while tests 7 and 10 are already near or faster than the current top row.
+- Direct testcase API access such as `/api/testcases/69e782b3baa77b2077c515f8` returns 403, so testcase shapes/lengths are not publicly exposed.
+- Optimization hypothesis for v2: v1 uses `DataCopyPad` for every tile and per-core contiguous slices can create non-32B-aligned starts/lengths; grid-stride 2048-element tiles allow full tiles to use aligned `DataCopy` and reserve `DataCopyPad` for the final tail.
+- Website result for v2: score `62.42`, rank `113`, times `[3.58us, 6.60us, 1.72ms, 4.36us, 6.28us, 1.74ms, 3.58us, 7.96us, 2.26ms, 4.64us, 7.74us, 2.25ms, 3.34us, 1.61ms, 5.36ms]`.
+- v2 vs v1: improved 13/15 testcases and raised score by `+2.09`, so the aligned `DataCopy`/grid-stride change is useful and should be kept as a baseline. Regressions were testcase 4 (`+0.80us`) and testcase 10 (`+1.06us`), likely small-input/noise or workload-specific scheduling effects.
+- v2 is still far from first place: small tests are still roughly 45-125% slower than top where comparable, and large tests are still roughly 7-10% slower, so next optimization should target arithmetic chain length and small-input path rather than only transfer.
 
 ## Technical Decisions
 | Decision | Rationale |

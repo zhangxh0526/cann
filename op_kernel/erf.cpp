@@ -23,13 +23,9 @@ public:
     __aicore__ inline KernelErf() {}
 
     __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t length) {
+        this->length = length;
         this->blockIdx = AscendC::GetBlockIdx();
         this->blockNum = AscendC::GetBlockNum();
-
-        uint32_t baseLength = length / this->blockNum;
-        uint32_t tail = length % this->blockNum;
-        this->coreStart = this->blockIdx * baseLength + (this->blockIdx < tail ? this->blockIdx : tail);
-        this->coreLength = baseLength + (this->blockIdx < tail ? 1 : 0);
 
         xGm.SetGlobalBuffer((__gm__ DT_X *)x, length);
         yGm.SetGlobalBuffer((__gm__ DT_X *)y, length);
@@ -41,18 +37,27 @@ public:
     }
 
     __aicore__ inline void Process() {
-        for (uint32_t offset = 0; offset < this->coreLength; offset += TILE_LENGTH) {
-            uint32_t currentLength = this->coreLength - offset;
+        uint32_t tileCount = (this->length + TILE_LENGTH - 1) / TILE_LENGTH;
+        for (uint32_t tileIdx = this->blockIdx; tileIdx < tileCount; tileIdx += this->blockNum) {
+            uint32_t offset = tileIdx * TILE_LENGTH;
+            uint32_t currentLength = this->length - offset;
             currentLength = currentLength > TILE_LENGTH ? TILE_LENGTH : currentLength;
-            CopyIn(offset, currentLength);
+            bool alignedTile = currentLength == TILE_LENGTH;
+            CopyIn(offset, currentLength, alignedTile);
             Compute(currentLength);
-            CopyOut(offset, currentLength);
+            CopyOut(offset, currentLength, alignedTile);
         }
     }
 
 private:
-    __aicore__ inline void CopyIn(uint32_t offset, uint32_t currentLength) {
+    __aicore__ inline void CopyIn(uint32_t offset, uint32_t currentLength, bool alignedTile) {
         AscendC::LocalTensor<DT_X> xLocal = inQueueX.AllocTensor<DT_X>();
+        if (alignedTile) {
+            AscendC::DataCopy(xLocal, xGm[offset], TILE_LENGTH);
+            inQueueX.EnQue(xLocal);
+            return;
+        }
+
         AscendC::DataCopyExtParams copyParams = {
             1,
             static_cast<uint32_t>(currentLength * sizeof(DT_X)),
@@ -61,7 +66,7 @@ private:
             0
         };
         AscendC::DataCopyPadExtParams<DT_X> padParams = {false, 0, 0, static_cast<DT_X>(0)};
-        AscendC::DataCopyPad(xLocal, xGm[this->coreStart + offset], copyParams, padParams);
+        AscendC::DataCopyPad(xLocal, xGm[offset], copyParams, padParams);
         inQueueX.EnQue(xLocal);
     }
 
@@ -96,8 +101,14 @@ private:
         inQueueX.FreeTensor(xLocal);
     }
 
-    __aicore__ inline void CopyOut(uint32_t offset, uint32_t currentLength) {
+    __aicore__ inline void CopyOut(uint32_t offset, uint32_t currentLength, bool alignedTile) {
         AscendC::LocalTensor<DT_X> yLocal = outQueueY.DeQue<DT_X>();
+        if (alignedTile) {
+            AscendC::DataCopy(yGm[offset], yLocal, TILE_LENGTH);
+            outQueueY.FreeTensor(yLocal);
+            return;
+        }
+
         AscendC::DataCopyExtParams copyParams = {
             1,
             static_cast<uint32_t>(currentLength * sizeof(DT_X)),
@@ -105,7 +116,7 @@ private:
             0,
             0
         };
-        AscendC::DataCopyPad(yGm[this->coreStart + offset], yLocal, copyParams);
+        AscendC::DataCopyPad(yGm[offset], yLocal, copyParams);
         outQueueY.FreeTensor(yLocal);
     }
 
@@ -117,10 +128,9 @@ private:
     AscendC::TBuf<AscendC::TPosition::VECCALC> tmpBuffer2;
     AscendC::GlobalTensor<DT_X> xGm;
     AscendC::GlobalTensor<DT_X> yGm;
+    uint32_t length;
     uint32_t blockIdx;
     uint32_t blockNum;
-    uint32_t coreStart;
-    uint32_t coreLength;
 };
 
 template <typename DT_X>

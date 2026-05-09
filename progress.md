@@ -42,12 +42,29 @@
   - `op_kernel/erf.cpp`
   - `op_host/erf.cpp`
 
+### Phase 4: Website Feedback Iteration 1
+- **Status:** in_progress
+- Actions taken:
+  - User submitted first implementation to CANNJudge.
+  - Received result: rank 115, score `60.33`, testcase times `[3.98us, 6.76us, 1.76ms, 3.56us, 6.98us, 1.76ms, 4.80us, 8.12us, 2.30ms, 3.58us, 7.98us, 2.30ms, 4.34us, 1.62ms, 5.47ms]`.
+  - Fetched current leaderboard data; first place is score `87.62` with times `[1.86us, 4.28us, 1.597ms, 1.94us, 4.64us, 1.598ms, 5.16us, 5.98us, 2.098ms, 4.74us, 6.32us, 2.105ms, 3.32us, 1.469ms, 5.051ms]`.
+  - Added a transfer-strategy check to `tools/check_erf_kernel.py`; it failed on v1 because no aligned `DataCopy` fast path existed.
+  - Implemented v2 kernel transfer strategy: grid-stride 2048-element tiles, aligned `DataCopy` for full tiles, and `DataCopyPad` only for the tail.
+- Files created/modified:
+  - `progress.md`
+  - `findings.md`
+  - `tools/check_erf_kernel.py`
+  - `op_kernel/erf.cpp`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
 | Planning files created | N/A | Files exist in repo root | Created | Pass |
 | Numeric polynomial guard | `rtk python tools/check_erf_kernel.py` | Sampled float32 error under `1e-4` | `erf kernel constants pass sampled accuracy checks` | Pass |
 | Local CMake configure | `rtk cmake -S . -B build` | Configure if ASC package exists | Failed: missing `ASCConfig.cmake`/`asc-config.cmake` | Blocked |
+| Website submission v1 | User submitted current code | Pass and useful timing data | Pass, score `60.33`, rank 115 | Needs optimization |
+| v2 local guard | `rtk python tools/check_erf_kernel.py` | Numeric and transfer-strategy checks pass | `erf kernel constants pass sampled accuracy checks` | Pass |
+| Website submission v2 | User submitted grid-stride/DataCopy version | Improve over v1 | Pass, score `62.42`, rank 113, 13/15 faster | Useful, keep |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
